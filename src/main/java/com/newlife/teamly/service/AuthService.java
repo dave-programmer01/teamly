@@ -44,16 +44,18 @@ public class AuthService {
     }
 
     public AuthResponse authenticate(AuthRequest request) {
+        String loginValue = request.getUsername() == null ? request.getEmail() : request.getUsername();
         // Let Spring Security validate credentials
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
-                        request.getUsername(),
+                        loginValue,
                         request.getPassword()
                 )
         );
 
         // If we get here, credentials are valid
-        var user = userRepository.findByUsername(request.getUsername())
+        var user = userRepository.findByUsername(loginValue)
+                .or(() -> userRepository.findByEmail(loginValue))
                 .orElseThrow();
 
         // Generate and return JWT
@@ -62,6 +64,10 @@ public class AuthService {
         return AuthResponse.builder()
                 .token(jwt)
                 .build();
+    }
+
+    public void signOut() {
+        // JWT is stateless; client-side token disposal is sufficient.
     }
 
     public void deleteUser(Long id) {

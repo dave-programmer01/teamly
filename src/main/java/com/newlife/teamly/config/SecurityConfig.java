@@ -4,6 +4,7 @@ import com.newlife.teamly.jwt.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -28,34 +29,26 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, AuthenticationProvider authenticationProvider) throws Exception {
         http
-                // Disable CSRF - not needed for stateless JWT auth
+                // ✅ REQUIRED for REST/mobile clients — disables browser CSRF token requirement
                 .csrf(AbstractHttpConfigurer::disable)
 
-                // Configure authorization rules
-                .authorizeHttpRequests(auth -> auth
-                        // Public endpoints - no auth required
-                        .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/public/**").permitAll()
-                        .requestMatchers("/api/users/**").permitAll()
-                        .requestMatchers("/api/teams/**").permitAll()
+                // Stateless session — no server-side sessions with JWT
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-                        // Everything else requires authentication
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/auth/**").permitAll()   // ✅ login + register public
+                        .requestMatchers("/auth/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/teams").permitAll()
                         .anyRequest().authenticated()
                 )
 
-                // Stateless session - no server-side session storage
-                .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                )
-
-                // Use our custom authentication provider
                 .authenticationProvider(authenticationProvider)
-
-                // Add JWT filter before the standard authentication filter
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
+
 
     @Bean
     public AuthenticationProvider authenticationProvider(UserDetailsService userDetailsService, PasswordEncoder passwordEncoder) {

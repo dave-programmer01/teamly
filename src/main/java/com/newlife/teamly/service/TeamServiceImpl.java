@@ -2,9 +2,12 @@ package com.newlife.teamly.service;
 
 import com.newlife.teamly.dto.TeamRequest;
 import com.newlife.teamly.dto.TeamResponse;
+import com.newlife.teamly.dto.UserResponse;
 import com.newlife.teamly.models.Team;
 import com.newlife.teamly.models.User;
+import com.newlife.teamly.models.UserTeam;
 import com.newlife.teamly.repository.TeamRepository;
+import com.newlife.teamly.repository.UserTeamRepository;
 import com.newlife.teamly.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
@@ -23,6 +26,7 @@ public class TeamServiceImpl implements TeamService {
 
     private final TeamRepository teamRepository;
     private final UserRepository userRepository;
+    private final UserTeamRepository userTeamRepository;
     private final ModelMapper modelMapper;
 
     @Override
@@ -70,6 +74,35 @@ public class TeamServiceImpl implements TeamService {
         }
 
         teamRepository.delete(team);
+    }
+
+    @Override
+    public void joinTeam(Long teamId, String position) {
+        User currentUser = getCurrentUser();
+        Team team = teamRepository.findById(teamId)
+                .orElseThrow(() -> new RuntimeException("Team not found"));
+
+        userTeamRepository.findByUserIdAndTeamTeamId(currentUser.getId(), teamId)
+                .ifPresent(existing -> {
+                    throw new RuntimeException("User is already in this team");
+                });
+
+        userTeamRepository.save(new UserTeam(null, currentUser, team, position));
+    }
+
+    @Override
+    public List<UserResponse> getTeamMembers(Long teamId) {
+        return userTeamRepository.findByTeamTeamId(teamId).stream()
+                .map(userTeam -> {
+                    User user = userTeam.getUser();
+                    return UserResponse.builder()
+                            .id(user.getId())
+                            .email(user.getEmail())
+                            .username(user.getUsername())
+                            .fullName(user.getUsername())
+                            .build();
+                })
+                .collect(Collectors.toList());
     }
 
     private User getCurrentUser() {

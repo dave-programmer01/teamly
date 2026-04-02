@@ -2,6 +2,7 @@ package com.newlife.teamly.controller;
 
 import com.newlife.teamly.dto.AuthRequest;
 import com.newlife.teamly.dto.AuthResponse;
+import com.newlife.teamly.dto.MessageResponse;
 import com.newlife.teamly.dto.RegisterRequest;
 import com.newlife.teamly.service.AuthService;
 import jakarta.validation.Valid;
@@ -23,6 +24,11 @@ public class AuthController {
         return new ResponseEntity<>(authService.register(request), HttpStatus.CREATED);
     }
 
+    @PostMapping("/signup")
+    public ResponseEntity<AuthResponse> signUp(@Valid @RequestBody RegisterRequest request) {
+        return new ResponseEntity<>(authService.register(request), HttpStatus.CREATED);
+    }
+
     @DeleteMapping("/delete/{id}")
     public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
         authService.deleteUser(id);
@@ -33,5 +39,16 @@ public class AuthController {
     public ResponseEntity<AuthResponse> authenticate(@Valid @RequestBody AuthRequest request) {
         // Authenticate and return JWT
         return ResponseEntity.ok(authService.authenticate(request));
+    }
+
+    @PostMapping("/signin")
+    public ResponseEntity<AuthResponse> signIn(@Valid @RequestBody AuthRequest request) {
+        return ResponseEntity.ok(authService.authenticate(request));
+    }
+
+    @PostMapping("/signout")
+    public ResponseEntity<MessageResponse> signOut() {
+        authService.signOut();
+        return ResponseEntity.ok(new MessageResponse("Signed out successfully"));
     }
 }
