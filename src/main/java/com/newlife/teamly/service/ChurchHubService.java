@@ -4,11 +4,14 @@ import com.newlife.teamly.dto.*;
 import com.newlife.teamly.models.*;
 import com.newlife.teamly.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 
@@ -22,6 +25,7 @@ public class ChurchHubService {
     private final SupplyRequestRepository supplyRequestRepository;
     private final EventRepository eventRepository;
     private final EventTaskRepository eventTaskRepository;
+    private final UserTeamRepository userTeamRepository;
 
     public List<AnnouncementResponse> getAnnouncements() {
         return announcementRepository.findAll().stream().map(this::mapAnnouncement).toList();
@@ -50,10 +54,31 @@ public class ChurchHubService {
     }
 
     public RequestResponse updateRequestStatus(Long requestId, RequestStatusUpdateRequest request) {
+        User currentUser = getCurrentUser();
         SupplyRequest supplyRequest = supplyRequestRepository.findById(requestId)
                 .orElseThrow(() -> new RuntimeException("Request not found"));
+
+        Team targetTeam = supplyRequest.getToTeam();
+
+        // Check if user is a member of the target team
+        boolean isMember = userTeamRepository.findByUserIdAndTeamTeamId(currentUser.getId(), targetTeam.getTeamId()).isPresent();
+
+        // Also check if user is the team owner OR if user.getTeam() matches (legacy/redundant check based on User model)
+        if (!isMember && (targetTeam.getTeamOwner() == null || !targetTeam.getTeamOwner().getId().equals(currentUser.getId()))) {
+            if (currentUser.getTeam() == null || !currentUser.getTeam().getTeamId().equals(targetTeam.getTeamId())) {
+                throw new RuntimeException("You are not authorized to update this request. Only members of the " + targetTeam.getTeamName() + " team can review it.");
+            }
+        }
+
         supplyRequest.setStatus(RequestStatus.valueOf(request.getStatus().toUpperCase()));
         return mapRequest(supplyRequestRepository.save(supplyRequest));
+    }
+
+    @Scheduled(fixedRate = 3600000) // Every hour
+    @Transactional
+    public void deleteOldRequests() {
+        LocalDateTime cutoff = LocalDateTime.now().minusHours(24);
+        supplyRequestRepository.deleteByCreatedAtBefore(cutoff);
     }
 
     public List<EventResponse> getEvents() {

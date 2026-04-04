@@ -1,9 +1,6 @@
 package com.newlife.teamly.controller;
 
-import com.newlife.teamly.dto.AuthRequest;
-import com.newlife.teamly.dto.AuthResponse;
-import com.newlife.teamly.dto.MessageResponse;
-import com.newlife.teamly.dto.RegisterRequest;
+import com.newlife.teamly.dto.*;
 import com.newlife.teamly.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -50,5 +47,17 @@ public class AuthController {
     public ResponseEntity<MessageResponse> signOut() {
         authService.signOut();
         return ResponseEntity.ok(new MessageResponse("Signed out successfully"));
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<MessageResponse> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        authService.forgotPassword(request);
+        return ResponseEntity.ok(new MessageResponse("Reset token sent to email"));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<MessageResponse> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        authService.resetPassword(request);
+        return ResponseEntity.ok(new MessageResponse("Password reset successfully"));
     }
 }
