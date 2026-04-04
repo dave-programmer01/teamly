@@ -40,30 +40,37 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        // Extract the token
-        final String jwt = authHeader.substring(7);
-        final String username = jwtService.extractUsername(jwt);
+        try {
+            // Extract the token
+            final String jwt = authHeader.substring(7);
+            final String username = jwtService.extractUsername(jwt);
 
-        // If we have a username and no authentication exists yet
-        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            // Load user details from database
-            UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
+            // If we have a username and no authentication exists yet
+            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                // Load user details from database
+                UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
 
-            // Validate the token
-            if (jwtService.isTokenValid(jwt, userDetails)) {
-                // Create authentication token
-                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                        userDetails,
-                        null,  // No credentials needed - JWT already validated
-                        userDetails.getAuthorities()
-                );
+                // Validate the token
+                if (jwtService.isTokenValid(jwt, userDetails)) {
+                    // Create authentication token
+                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                            userDetails,
+                            null,  // No credentials needed - JWT already validated
+                            userDetails.getAuthorities()
+                    );
 
-                // Attach request details
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    // Attach request details
+                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-                // Set the authentication in the security context
-                SecurityContextHolder.getContext().setAuthentication(authToken);
+                    // Set the authentication in the security context
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                }
             }
+        } catch (Exception e) {
+            // Log the error for debugging but do not block the request
+            // For public endpoints, this will allow the request to proceed as anonymous
+            // For protected endpoints, the security filter chain will eventually return 403
+            logger.warn("JWT Authentication failed: " + e.getMessage());
         }
 
         // Continue the filter chain

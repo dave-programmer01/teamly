@@ -39,12 +39,14 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll()   // ✅ login + register public
+                        .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/teams").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/teams").hasAuthority("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/announcements").hasAuthority("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/events").hasAuthority("ADMIN")
+                        .requestMatchers("/error").permitAll()
+                        .requestMatchers("/").permitAll()
                         .anyRequest().authenticated()
                 )
 
