@@ -1,124 +1,254 @@
-# Teamly API Documentation
+# Teamly Frontend Integration Documentation
 
-Teamly is a backend application designed for team management, allowing users to create, join, and manage teams. This documentation provides a comprehensive guide to using the API, including authentication, user profile management, and team operations.
+This document is a frontend-focused API guide for Teamly. It lists available endpoints, auth flow, expected payloads, and sample responses so web/mobile clients can integrate quickly.
 
-## Table of Contents
-- [Technologies Used](#technologies-used)
-- [Authentication](#authentication)
-- [User Endpoints](#user-endpoints)
-- [Team Endpoints](#team-endpoints)
-- [Models](#models)
+## Base URL
 
----
+- Local: `http://localhost:8080`
+- All endpoints below are relative to this base URL.
 
-## Technologies Used
-- **Java 17** & **Spring Boot 3**
-- **Spring Security** with **JWT** for stateless authentication
-- **Spring Data JPA** with **Hibernate** for database management
-- **ModelMapper** for entity-to-DTO conversion
-- **Cloudinary** for image upload and storage
-- **Lombok** for reducing boilerplate code
+## Authentication for Frontend
 
----
+- Teamly uses JWT bearer tokens.
+- Include this header on protected routes:
 
-## Authentication
-Teamly uses JSON Web Tokens (JWT) for authentication. Most endpoints require an `Authorization` header in the format `Bearer <token>`.
+```http
+Authorization: Bearer <token>
+```
 
-### Register a User
-- **Method:** `POST`
-- **URL:** `/api/auth/register`
-- **Payload:**
-    ```json
-    {
-      "username": "spalobolo",
-      "email": "user@example.com",
-      "password": "yourpassword"
-    }
-    ```
-- **Response:** Returns a JWT token.
+- Public routes:
+  - `POST /api/auth/register`
+  - `POST /api/auth/signup`
+  - `POST /api/auth/login`
+  - `POST /api/auth/signin`
+  - `GET /api/teams`
 
-### Authenticate a User
-- **Method:** `POST`
-- **URL:** `/api/auth/authenticate`
-- **Payload:**
-    ```json
-    {
-      "username": "spalobolo",
-      "password": "yourpassword"
-    }
-    ```
-- **Response:** Returns a JWT token.
+## Auth Endpoints (`/api/auth`)
 
----
+### Register / Signup
 
-## User Endpoints
+- `POST /api/auth/register`
+- `POST /api/auth/signup`
 
-### Update Profile Picture
-- **Method:** `PUT`
-- **URL:** `/api/users/profile-picture`
-- **Authentication Required:** Yes
-- **Form-Data:**
-    - `file`: The image file to upload.
-- **Response:** Returns the URL of the uploaded image on Cloudinary.
+Request body:
 
----
+```json
+{
+  "username": "john_doe",
+  "email": "john@example.com",
+  "password": "secret123"
+}
+```
 
-## Team Endpoints
+Success response (`201`):
 
-### Get All Teams
-- **Method:** `GET`
-- **URL:** `/api/teams`
-- **Authentication Required:** No (Configured in `SecurityConfig.java`)
-- **Response:** A list of all teams.
+```json
+{
+  "token": "<jwt-token>"
+}
+```
 
-### Create a Team
-- **Method:** `POST`
-- **URL:** `/api/teams`
-- **Authentication Required:** Yes
-- **Payload:**
-    ```json
-    {
-      "teamName": "Alpha Squad",
-      "teamDescription": "High-performance dev team"
-    }
-    ```
-- **Constraint:** The authenticated user will automatically become the **Team Owner**.
-- **Response:** Details of the created team.
+### Login / Signin
 
-### Update a Team
-- **Method:** `PUT`
-- **URL:** `/api/teams/{id}`
-- **Authentication Required:** Yes
-- **Constraint:** Only the **Team Owner** can update the team.
-- **Payload:** Same as `POST`.
-- **Response:** Details of the updated team.
+- `POST /api/auth/login`
+- `POST /api/auth/signin`
 
-### Delete a Team
-- **Method:** `DELETE`
-- **URL:** `/api/teams/{id}`
-- **Authentication Required:** Yes
-- **Constraint:** Only the **Team Owner** can delete the team.
-- **Response:** `204 No Content`.
+You can log in with either `username` or `email`.
 
----
+Request body (username):
 
-## Models
+```json
+{
+  "username": "john_doe",
+  "password": "secret123"
+}
+```
 
-### User
-- Each user can belong to **at most one team**.
-- A user can be the **leader of exactly one team**.
+Request body (email):
 
-### Team
-- **Team Owner:** The user who created the team.
-- **Members:** A list of users associated with the team.
+```json
+{
+  "email": "john@example.com",
+  "password": "secret123"
+}
+```
 
----
+Success response (`200`):
 
-## Error Handling
-The API returns standard HTTP status codes:
-- `200 OK` / `201 Created`: Success
-- `400 Bad Request`: Validation failure
-- `401 Unauthorized`: Missing or invalid JWT token
-- `403 Forbidden`: User is not the owner of the team
-- `404 Not Found`: Team or User not found
--
+```json
+{
+  "token": "<jwt-token>"
+}
+```
+
+### Signout
+
+- `POST /api/auth/signout`
+- Auth required: `Yes`
+
+Success response (`200`):
+
+```json
+{
+  "message": "Signed out successfully"
+}
+```
+
+### Delete User
+
+- `DELETE /api/auth/delete/{id}`
+- Auth required: `Yes`
+- Success response: `204 No Content`
+
+## Teams Endpoints (`/api/teams`)
+
+### Get all teams
+
+- `GET /api/teams`
+- Auth required: `No`
+
+Response (`200`):
+
+```json
+[
+  {
+    "teamId": 1,
+    "teamName": "Media Team",
+    "teamDescription": "Handles livestream and recording",
+    "teamCreatedDate": "2026-04-02",
+    "ownerUsername": "john_doe"
+  }
+]
+```
+
+### Create team
+
+- `POST /api/teams`
+- Auth required: `Yes`
+
+Request:
+
+```json
+{
+  "teamName": "Ushering",
+  "teamDescription": "Welcomes and seats guests"
+}
+```
+
+Response (`201`): `TeamResponse`
+
+### Update team
+
+- `PUT /api/teams/{id}`
+- Auth required: `Yes`
+- Only team owner can update.
+
+Request body: same as create team.
+
+### Delete team
+
+- `DELETE /api/teams/{id}`
+- Auth required: `Yes`
+- Only team owner can delete.
+- Response: `204 No Content`
+
+### Join team
+
+- `POST /api/teams/{teamId}/join`
+- Auth required: `Yes`
+
+Request:
+
+```json
+{
+  "position": "Volunteer"
+}
+```
+
+Response (`200`):
+
+```json
+{
+  "message": "Joined team successfully"
+}
+```
+
+### Get team members
+
+- `GET /api/teams/{teamId}/members`
+- Auth required: `Yes`
+
+Response (`200`):
+
+```json
+[
+  {
+    "id": 1,
+    "username": "john_doe",
+    "email": "john@example.com",
+    "fullName": "john_doe"
+  }
+]
+```
+
+## Announcements Endpoints (`/api/announcements`)
+
+### Get announcements
+
+- `GET /api/announcements`
+- Auth required: `Yes`
+
+### Post announcement
+
+- `POST /api/announcements`
+- Auth required: `Yes`
+- Request body: `AnnouncementRequest`
+- Response (`201`): `AnnouncementResponse`
+
+### Delete announcement
+
+- `DELETE /api/announcements/{id}`
+- Auth required: `Yes`
+
+Response (`200`):
+
+```json
+{
+  "message": "Announcement deleted successfully"
+}
+```
+
+## Requests Endpoints (`/api/requests`)
+
+- `GET /api/requests` (auth required)
+- `POST /api/requests` (auth required, body: `RequestCreateRequest`)
+- `PATCH /api/requests/{id}/status` (auth required, body: `RequestStatusUpdateRequest`)
+
+## Events Endpoints (`/api/events`)
+
+- `GET /api/events` (auth required)
+- `POST /api/events` (auth required, body: `EventCreateRequest`)
+- `GET /api/events/{eventId}/tasks` (auth required)
+- `PATCH /api/events/tasks/{taskId}` (auth required, body: `TaskStatusUpdateRequest`)
+
+## User Endpoint (`/api/users`)
+
+### Update profile picture
+
+- `PUT /api/users/profile-picture`
+- Auth required: `Yes`
+- Content type: `multipart/form-data`
+- Field: `file`
+
+Success response (`200`):
+
+```text
+https://res.cloudinary.com/.../image/upload/...
+```
+
+## Common Frontend Notes
+
+- Store token securely (e.g., secure storage / httpOnly cookie strategy depending on client architecture).
+- If token is missing/expired, backend returns `401 Unauthorized`.
+- Validation or bad payloads return `400 Bad Request`.
+- For owner-only actions, unauthorized ownership checks may return `403` or a business error depending on handler configuration.
