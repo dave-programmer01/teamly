@@ -1,5 +1,7 @@
 package com.newlife.teamly.service;
 
+import lombok.extern.slf4j.Slf4j;
+
 import com.newlife.teamly.dto.*;
 import com.newlife.teamly.jwt.JwtService;
 import com.newlife.teamly.models.Roles;
@@ -16,6 +18,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -33,9 +36,16 @@ public class AuthService {
                 .profilePicture("https://i.pravatar.cc/300")
                 .build();
 
-        // Save to database
+        log.info("Attempting to register user: {}", request.getUsername());
 
-        userRepository.save(user);
+        // Save to database
+        try {
+            userRepository.save(user);
+            log.info("User registered successfully: {}", user.getUsername());
+        } catch (Exception e) {
+            log.error("Error during user registration: {}", e.getMessage());
+            throw e;
+        }
 
         // Generate JWT for immediate login after registration
         var jwt = jwtService.generateToken(user);
