@@ -4,34 +4,30 @@ import com.newlife.teamly.dto.MessageResponse;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-
-import java.util.HashMap;
-import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, String>> handleValidationExceptions(MethodArgumentNotValidException ex) {
-        Map<String, String> errors = new HashMap<>();
+    public ResponseEntity<MessageResponse> handleValidationExceptions(MethodArgumentNotValidException ex) {
+        StringBuilder message = new StringBuilder();
         ex.getBindingResult().getAllErrors().forEach((error) -> {
-            String fieldName = ((FieldError) error).getField();
-            String errorMessage = error.getDefaultMessage();
-            errors.put(fieldName, errorMessage);
+            message.append(error.getDefaultMessage()).append(". ");
         });
-        return new ResponseEntity<>(errors, HttpStatus.BAD_REQUEST);
+        return new ResponseEntity<>(new MessageResponse(message.toString().trim()), HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<MessageResponse> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
         String message = "Database error: Possible duplicate entry or constraint violation.";
-        if (ex.getMessage() != null && (ex.getMessage().contains("users_username_key") || ex.getMessage().contains("uk_pxsh3sssh2p78uovkjxskbueo"))) {
+        String exceptionMessage = ex.getMessage() != null ? ex.getMessage().toLowerCase() : "";
+
+        if (exceptionMessage.contains("username") || exceptionMessage.contains("users_username_key")) {
             message = "Username already exists. Please choose another one.";
-        } else if (ex.getMessage() != null && (ex.getMessage().contains("users_email_key") || ex.getMessage().contains("uk_6dotkott2kjsp8vw4d0m25fb7"))) {
+        } else if (exceptionMessage.contains("email") || exceptionMessage.contains("users_email_key")) {
             message = "Email already exists. Please use a different email.";
         }
         return new ResponseEntity<>(new MessageResponse(message), HttpStatus.CONFLICT);
