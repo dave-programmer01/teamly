@@ -8,6 +8,9 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -75,7 +78,15 @@ public class JwtService {
 
     // Create the signing key from the secret
     private SecretKey getSigningKey() {
-        // For production, use a properly generated key
-        return Keys.hmacShaKeyFor(secretKey.getBytes());
+        // We use SHA-256 to hash the secret key string to ensure it's always 256 bits (32 bytes)
+        // regardless of the input string length, which satisfies HS256 requirements.
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] keyBytes = digest.digest(secretKey.getBytes(StandardCharsets.UTF_8));
+            return Keys.hmacShaKeyFor(keyBytes);
+        } catch (NoSuchAlgorithmException e) {
+            // Fallback for environment issues (should not happen in modern JVMs)
+            return Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
+        }
     }
 }
